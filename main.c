@@ -76,9 +76,9 @@ float calculateLightLevel(Vector3 cubePos, Vector3 lightSource, int strength)
     if (total < strength / 1.05)
         return 0.05;
     if (total < strength)
-        return 0.035;
+        return 0.04;
 
-    return 0.035;
+    return 0.04;
 }
 
 Vector3 playerRotation = (Vector3){0, -20, 0};
@@ -189,7 +189,7 @@ int main()
     }
 
     // tell raylib what fps to target
-    SetTargetFPS(100);
+    SetTargetFPS(1000);
 
     // loop until window should close
     while (!WindowShouldClose())
@@ -220,31 +220,30 @@ int main()
                         (float)(z - chunkSize / 2) * cubeSize,
                     };
 
-                    // light level calculations, all very primitive 
-                    Color color = GREEN;
-
-                    Vector3 colorVector = ColorToHSV(color);
-
-                    colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
-
-                    Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
-
-                    Color color2 = BROWN;
-
-                    Vector3 colorVector2 = ColorToHSV(color2);
-
-                    colorVector2.z = calculateLightLevel(cubePos, camera.position, 20);
-
-                    Color newColor2 = ColorFromHSV(colorVector2.x, colorVector2.y, colorVector2.z);
-
                     // really fucking stupid shit to detect top layer of terrain
                     if (y == (mapheights[x * z]) - 1)
                     {
+                        Color color = GREEN;
+
+                        Vector3 colorVector = ColorToHSV(color);
+
+                        colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
+
+                        Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
+
                         DrawCube(cubePos, cubeSize, cubeSize, cubeSize, newColor);
                     }
                     else
                     {
-                        DrawCube(cubePos, cubeSize, cubeSize, cubeSize, newColor2);
+                        Color color = DARKBROWN;
+
+                        Vector3 colorVector = ColorToHSV(color);
+
+                        colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
+
+                        Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
+
+                        DrawCube(cubePos, cubeSize, cubeSize, cubeSize, newColor);
                     }
                 }
             }
