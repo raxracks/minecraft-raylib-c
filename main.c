@@ -9,6 +9,8 @@
 
 // will be replaced with perlin noise eventually
 int mapheights[1024] = {0};
+const int chunkSize = 16;
+int renderDistance = 2;
 
 Vector3 playerPosition = (Vector3){ 0 };
 
@@ -83,6 +85,8 @@ float calculateLightLevel(Vector3 cubePos, Vector3 lightSource, int strength)
 
 Vector3 playerRotation = (Vector3){0, -20, 0};
 
+int selectedPosition = 0;
+
 void UpdateGameCamera(Camera *camera, Vector3 *playerPos)
 {
     bool direction[6] = {IsKeyDown(KEY_W),
@@ -134,6 +138,30 @@ void UpdateGameCamera(Camera *camera, Vector3 *playerPos)
     camera->target.z = camera->position.z - transform.m14;
 }
 
+bool CheckBlockExposure(int blockX, int blockY, int blockZ, bool checkBelow, int index) {
+	bool a = blockY < mapheights[index - 1];
+	bool b = blockY < mapheights[index + 1];
+	bool c = blockY < mapheights[index + (chunkSize * renderDistance)];
+	bool d = blockY < mapheights[index - (chunkSize * renderDistance)];
+	bool e = false;
+	bool f = !(blockY == (mapheights[index]) - 1);
+
+	if(checkBelow) {
+		for(int y = blockY; y > 0; y--) {
+			if(CheckBlockExposure(blockX, y, blockZ, false, index)) {
+				e = true;
+			} else {
+				e = false;
+				break;
+			}
+		}
+	} else {
+		return a && b && c && d && f;
+	}
+
+	return a && b && c && d && e && f;
+}
+
 int main()
 {
     // Initialization
@@ -154,33 +182,33 @@ int main()
     SetCameraMode(camera, CAMERA_FIRST_PERSON);
 
     // terrain and rendering info
-    const int chunkSize = 16;
     const int maxHeight = 10;
-    int renderDistance = 2;
 
     for (int i = 0; i < chunkSize * (chunkSize * (pow(renderDistance, 2))); i++) // chunkSize * (chunkSize * (renderDistance^2)) 
     {
-        if (i == 0)
-        {
-            mapheights[i] = rand() % maxHeight;
-        }
-        else
-        {
-            float num = rand() % 100;
+        //if (i == 0)
+        //{
+            mapheights[i] = 10 + rand() % 2;
+        //}
+        //else
+        //{
+            /*float num = rand() % 100;
 
-            if (num < 50 && num > 40)
+            if (num < 50 && num > 10)
             {
-                mapheights[i] = mapheights[i - 1] - (rand() % rand() % 2);
+                mapheights[i] = mapheights[i - 17] - (rand() % rand() % 2);
             }
-            else if (num > 50 && num < 60)
+            else if (num > 50 && num < 90)
             {
-                mapheights[i] = mapheights[i - 1] + (rand() % rand() % 2);
+                mapheights[i] = mapheights[i - 17] + (rand() % rand() % 2);
             }
             else
             {
-                mapheights[i] = mapheights[i - 1];
-            }
-        }
+                mapheights[i] = mapheights[i - 17];
+            }*/
+
+            //mapheights[i] = rand() % mapheights[i - 1] + rand() % 5;
+        //}
 
         if (mapheights[i] < 1)
         {
@@ -188,12 +216,28 @@ int main()
         }
     }
 
+	Ray ray = { 0 };
+
+	RayCollision collision = { 0 };
+
     // tell raylib what fps to target
     SetTargetFPS(1000);
 
     // loop until window should close
     while (!WindowShouldClose())
     {
+		if(IsKeyDown(KEY_RIGHT)) {
+			selectedPosition++;
+		}
+
+		if(IsKeyDown(KEY_LEFT)) {
+			selectedPosition--;
+		}
+
+		if(IsKeyDown(KEY_DOWN)) {
+			mapheights[selectedPosition]--;
+		}
+    
         UpdateMouseMovement();
 
         // custom camera update
@@ -205,47 +249,60 @@ int main()
 
         BeginMode3D(camera);
 
+        int i = 0;
+
         for (int x = 0; x < chunkSize * renderDistance; x++)
         {
             for (int z = 0; z < chunkSize * renderDistance; z++)
             {
-                for (int y = 0; y < mapheights[x * z]; y++)
+                for (int y = 0; y < mapheights[i]; y++)
                 {
-                    float cubeSize = 0.45;
+					float cubeSize = 0.45f;
+					
+					// calculate cube position
+					Vector3 cubePos = {
+					    (float)(x - chunkSize / 2) * cubeSize,
+					    (float)(y - chunkSize / 2) * cubeSize,
+						(float)(z - chunkSize / 2) * cubeSize,
+					};
 
-                    // calculate cube position
-                    Vector3 cubePos = {
-                        (float)(x - chunkSize / 2) * cubeSize,
-                        (float)(y - chunkSize / 2) * cubeSize,
-                        (float)(z - chunkSize / 2) * cubeSize,
-                    };
+					if(i == selectedPosition) {
+						DrawCubeWires(cubePos, cubeSize, cubeSize, cubeSize, RED);
+					}
 
-                    // really fucking stupid shit to detect top layer of terrain
-                    if (y == (mapheights[x * z]) - 1)
-                    {
-                        Color color = GREEN;
+                	// check if block should be rendered
+					if(CheckBlockExposure(x, y, z, true, i)) {
+						//DrawCubeWires(cubePos, cubeSize, cubeSize, cubeSize, RED);
+					} else {
+                    	// really fucking stupid shit to detect top layer of terrain
+                    	if (y == (mapheights[i]) - 1)
+                    	{
+                        	Color color = GREEN;
 
-                        Vector3 colorVector = ColorToHSV(color);
+                        	Vector3 colorVector = ColorToHSV(color);
 
-                        colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
+                        	colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
 
-                        Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
+                        	Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
 
-                        DrawCube(cubePos, cubeSize, cubeSize, cubeSize, newColor);
-                    }
-                    else
-                    {
-                        Color color = DARKBROWN;
+                        	DrawCube(cubePos, cubeSize, cubeSize, cubeSize, newColor);
+                    	}
+                    	else
+                    	{
+                        	Color color = DARKBROWN;
 
-                        Vector3 colorVector = ColorToHSV(color);
+                        	Vector3 colorVector = ColorToHSV(color);
 
-                        colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
+                        	colorVector.z = calculateLightLevel(cubePos, camera.position, 20);
 
-                        Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
+                        	Color newColor = ColorFromHSV(colorVector.x, colorVector.y, colorVector.z);
 
-                        DrawCube(cubePos, cubeSize, cubeSize, cubeSize, newColor);
+                        	DrawCube(cubePos, 0.45, 0.45, 0.45, newColor);
+                   		}
                     }
                 }
+
+                i++;
             }
         }
 
